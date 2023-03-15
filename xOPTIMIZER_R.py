@@ -1,16 +1,27 @@
 #PACKAGES
+
 import pyomo.environ as pe
 import pyomo.opt as po
 from pyomo.core import *
 import pandas as pd 
 import numpy as np
+import os 
+import sys
+from pathlib import Path
+print(os.getcwd())
+
 #---------------------------------------------------------------------------
 from xFunctions import *  # Contains all custom function created for the model
 #---------------------------------------------------------------------------
+excel_path = sys.argv[1]
+parent_folder = os.path.dirname(excel_path)
+data_folder = parent_folder + "/Data"
+
 # Input Data (from master excel file)
-df_run = pd.read_excel('Opt_X.xlsx','Run')
-df_param = pd.read_excel('Opt_X.xlsx','parameter settings')
-df_pw = pd.read_excel('Opt_X.xlsx','Efficiency breakpoints')
+df_run = pd.read_excel(excel_path,'Run')
+df_param = pd.read_excel(excel_path,'parameter settings')
+df_pw = pd.read_excel(excel_path,'Efficiency breakpoints')
+
 
 # Assigning model input values to variables
 Start_date = assign_var(df_run,'Start_date_sim') 
@@ -33,9 +44,9 @@ hourly_demand = assign_var(df_param,'k_d')
 
 
 #Importing solar data
-P_PV_max = import_PV('PV_data.xlsx',Start_date, End_date, Start_date_scen, End_date_scen)
+P_PV_max = import_PV(data_folder+'/PV_data.xlsx',Start_date, End_date, Start_date_scen, End_date_scen)
 # importing day ahead prices as well as the applicaple time range detemrined by the date settings
-DA,TimeRange = import_DA('Elspotprices_RAW.csv',Start_date, End_date, Start_date_scen, End_date_scen)
+DA,TimeRange = import_DA(data_folder+'/Elspotprices_RAW.csv',Start_date, End_date, Start_date_scen, End_date_scen)
 
 Demand = demand_assignment(Demand_pattern,TimeRange,hourly_demand)
 
@@ -43,28 +54,28 @@ Demand = demand_assignment(Demand_pattern,TimeRange,hourly_demand)
 file_FCR = assign_var(df_run,'FCR price file name')
 price_column_FCR = assign_var(df_run,'FCR price column')
 time_column_FCR = assign_var(df_run,'FCR time column')
-c_FCR = import_generic(file_FCR,price_column_FCR, time_column_FCR, Start_date, End_date, Start_date_scen, End_date_scen)
+c_FCR = import_generic(file_FCR,data_folder,price_column_FCR, time_column_FCR, Start_date, End_date, Start_date_scen, End_date_scen)
 # importing mFRR data
-c_mFRR = import_mFRR("MfrrReservesDK1.csv", Start_date, End_date, Start_date_scen, End_date_scen)
+c_mFRR = import_mFRR(data_folder+"/MfrrReservesDK1.csv", Start_date, End_date, Start_date_scen, End_date_scen)
 file_mFRR = assign_var(df_run,'mFRR price file name')
 price_column_mFRR = assign_var(df_run,'mFRR price column')
 time_column_mFRR = assign_var(df_run,'mFRR time column')
-c_mFRR_2 = import_generic(file_mFRR,price_column_mFRR, time_column_mFRR, Start_date, End_date, Start_date_scen, End_date_scen)
+c_mFRR_2 = import_generic(file_mFRR,data_folder,price_column_mFRR, time_column_mFRR, Start_date, End_date, Start_date_scen, End_date_scen)
 # importing aFRR data using the generic function
 file_aFRR_up = assign_var(df_run,'aFRR_up price file name')
 price_column_aFRR_up = assign_var(df_run,'aFRR_up price column')
 time_column_aFRR_up = assign_var(df_run,'aFRR_up time column')
-c_aFRR_upX = import_generic(file_aFRR_up,price_column_aFRR_up, time_column_aFRR_up, Start_date, End_date, Start_date_scen, End_date_scen)
+c_aFRR_upX = import_generic(file_aFRR_up,data_folder,price_column_aFRR_up, time_column_aFRR_up, Start_date, End_date, Start_date_scen, End_date_scen)
 file_aFRR_down = assign_var(df_run,'aFRR_down price file name')
 price_column_aFRR_down = assign_var(df_run,'aFRR_down price column')
 time_column_aFRR_down = assign_var(df_run,'aFRR_down time column')
-c_aFRR_down = import_generic(file_aFRR_down,price_column_aFRR_down, time_column_aFRR_down, Start_date, End_date, Start_date_scen, End_date_scen)
+c_aFRR_down = import_generic(file_aFRR_down,data_folder,price_column_aFRR_down, time_column_aFRR_down, Start_date, End_date, Start_date_scen, End_date_scen)
 
 #PV data import
 file_PV = assign_var(df_run,'Solar irradiance')
 power_column_PV = assign_var(df_run,'PV power column')
 time_column_PV = assign_var(df_run,'PV time column')
-P_PV_max = import_generic(file_PV,power_column_PV, time_column_PV, Start_date, End_date, Start_date_scen, End_date_scen)
+P_PV_max = import_generic(file_PV,data_folder,power_column_PV, time_column_PV, Start_date, End_date, Start_date_scen, End_date_scen)
 
 
 # Converting the efficiency breakpoints to respective lists for setpoints and resulting hydrogen mass flow
@@ -74,7 +85,11 @@ if sEfficiency == 'pw':
 
 
 
+print("Hello")
 
+
+
+"""
 # MODEL 1 Included for testing purposes ------------------------------------------------
 
 solver = po.SolverFactory('gurobi')
@@ -266,3 +281,4 @@ print(results)
 
 
 # MODEL 1 Included for testing purposes ------------------------------------------------
+"""

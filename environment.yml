@@ -1,0 +1,9 @@
+name: P2XModel
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pyomo
+  - pandas
+  - numpy
+  - openpyxl

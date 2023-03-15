@@ -136,8 +136,8 @@ def import_mFRR(file_name, Start_date, End_date, Start_date_scen, End_date_scen)
 
 
 # Function designed for importing and converting hourly time series csv file (delimiter-flexible))
-def import_generic(file_name, price_column,time_column, Start_date, End_date, Start_date_scen, End_date_scen):
-    file_to_open = Path("Data/") / file_name
+def import_generic(file_name,data_folder, price_column,time_column, Start_date, End_date, Start_date_scen, End_date_scen):
+    file_to_open = data_folder + "/" + file_name
     if '.csv' in file_name:
         df_raw = pd.read_csv(file_to_open,sep=get_delimiter(file_to_open),decimal = ',',low_memory=False)
         df_raw[price_column] = df_raw[price_column].astype(float)
