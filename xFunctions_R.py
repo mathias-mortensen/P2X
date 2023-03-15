@@ -340,3 +340,87 @@ def SingleInputData(Rep_scen,Prob):
             c_DAs[(i,t)] = Rep_scen[0][i-1][t-1]
 
     return Φ, Ω,c_FCRs,c_aFRR_ups,c_aFRR_downs,c_mFRR_ups,c_DAs,π_r,π_DA
+
+
+def GenAverage(scenarios,n_samples,sample_length):
+    Avg_scenarios = np.zeros((n_samples,sample_length))
+
+    for i in range(0,n_samples):
+        for j in range(0,sample_length):
+            Avg_scenarios[i][j] = scenarios[i][j].mean()
+    return Avg_scenarios
+
+def AvgKmedReduction(Avg_scenarios,scenarios,n_clusters,n_samples,sample_length):
+
+    Red_Scen = []   ## Red_Scen[0] = DA scenarios, Red_Scen[1] = FCR scenarios, Red_Scen[2] = aFRR_up scenarios, Red_Scen[3] = aFRR_Down scenarios, Red_Scen[4] = mFRR scenarios 
+    Prob = np.zeros(n_clusters) # Prob scenario 1 in DA = Prob[0,0], Prob scenario 2 in DA = Prob[1,0] osv... Prob scenario 1 FCR = Prob[0,1] .....   
+    kmedoids = KMedoids(n_clusters=n_clusters,metric='euclidean').fit(Avg_scenarios)
+
+    ## Calculating scenario probability ## 
+    Red_Scen.append(kmedoids.cluster_centers_) 
+    for j in range(0,n_clusters):
+        Prob[j] = np.count_nonzero(kmedoids.labels_ == j)/len(kmedoids.labels_)
+
+    true = 0
+    index = []
+
+    for j in range(0,len(Red_Scen[0])):   
+        for x in range(0,n_samples):     
+            for i in range(0,sample_length):
+            
+                if Red_Scen[0][j][i] == scenarios[x][i].mean():
+                    true = true+1
+                    
+                    if true == sample_length:
+                        index.append(x)
+                        
+                if Red_Scen[0][j][i] != scenarios[x][i].mean():
+                    true = 0
+        else:
+            continue
+        
+    rep_senc1 = []
+    for i in index:
+        rep_senc1.append(scenarios[i]) 
+
+    Rep_scen1 = np.zeros((len(rep_senc1[0][0]),n_clusters,sample_length))
+
+    for i in range(0,len(rep_senc1[0][0])): # nr markets
+        for j in range(0,n_clusters):
+            Rep_scen1[i][j] = rep_senc1[j][:,i]
+
+    return Rep_scen1, Prob
+
+# Combined scenario generation
+def scenario_comb(scenarios,n_samples,sample_length,n_clusters,c_FCR_scen,blocksize):
+    Avg_scenarios = GenAverage(scenarios,n_samples,sample_length)
+    Rep_scen_comb, Prob_comb = AvgKmedReduction(Avg_scenarios,scenarios,n_clusters,n_samples,sample_length) 
+
+    Data_FCR = [c_FCR_scen]
+    Data_names_FCR = ['FCR']
+    scenarios_FCR = Bootsrap('single',Data_FCR,Data_names_FCR,n_samples,blocksize,sample_length)
+    kmedoids = KMedoids(n_clusters=n_clusters,metric='euclidean').fit(scenarios_FCR[1])
+
+    FCR_red_scen = kmedoids.cluster_centers_
+    Prob_FCR = np.zeros((n_clusters))
+    for j in range(0,n_clusters):
+                Prob_FCR[j] = np.count_nonzero(kmedoids.labels_ == j)/len(kmedoids.labels_)
+
+    Rep_scen_combALL = np.zeros((5,n_clusters,len(Rep_scen_comb[0][0])))
+    Rep_scen_combALL[0] = Rep_scen_comb[0]  ## Day ahead 
+    Rep_scen_combALL[1] = FCR_red_scen  ## FCR
+    Rep_scen_combALL[2] = Rep_scen_comb[1]  ## aFRR up 
+    Rep_scen_combALL[3] = Rep_scen_comb[2]  ## aFRR down 
+    Rep_scen_combALL[4] = Rep_scen_comb[3]  ## mFRR  
+
+
+    Prob_comb_all = np.zeros((n_clusters,len(Rep_scen_combALL)))
+
+    for i in range(0,len(Rep_scen_combALL)):
+        for j in range(0,n_clusters):
+            if i != 1:
+                Prob_comb_all[j][i] = Prob_comb[j]
+            if i == 1:
+                Prob_comb_all[j][i] = Prob_FCR[j]
+    
+    return Rep_scen_combALL,Prob_comb_all

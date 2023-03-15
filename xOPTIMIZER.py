@@ -82,7 +82,7 @@ if version == 3:
     c_FCR_scen = import_generic(file_FCR,price_column_FCR, time_column_FCR, Start_date_scen, End_date_scen,'list')
     c_aFRR_up_scen = import_generic(file_aFRR_up,price_column_aFRR_up, time_column_aFRR_up, Start_date_scen, End_date_scen,'list')
     c_aFRR_down_scen = import_generic(file_aFRR_down,price_column_aFRR_down, time_column_aFRR_down, Start_date_scen, End_date_scen,'list')
-    c_mFRR_scen = import_generic(file_mFRR,price_column_mFRR, time_column_mFRR, Start_date, End_date,'list')
+    c_mFRR_scen = import_generic(file_mFRR,price_column_mFRR, time_column_mFRR, Start_date_scen, End_date_scen,'list')
 
     Data = [c_DA_scen, c_FCR_scen, c_aFRR_up_scen, c_aFRR_down_scen, c_mFRR_scen]
     Data_names = ['DA','FCR','aFRR Up','aFRR Down','mFRR']
@@ -99,3 +99,9 @@ if version == 3:
         scenarios = Bootsrap(sampling_method,Data,Data_names,n_samples,blocksize,sample_length)
         Rep_scen,Prob = K_Medoids(scenarios,n_clusters) #generating representative scenarios in "Rep_scen" from 'scenarios' with probabilities in "Prob"
         Φ, Ω,c_FCRs,c_aFRR_ups,c_aFRR_downs,c_mFRR_ups,c_DAs,π_r,π_DA = SingleInputData(Rep_scen,Prob)
+
+    if sampling_method == 'combined':
+        ## Generate Average Price for all markets for each time (Only for "Combined scenario generation"!!) ##
+        ## For DA, aFRR_up & down and mFRR 
+        scenarios = Bootsrap('combined',Data_comb,Data_comb_names,n_samples,blocksize,sample_length)
+        Φ, Ω,c_FCRs,c_aFRR_ups,c_aFRR_downs,c_mFRR_ups,c_DAs,π_r,π_DA = SingleInputData(Rep_scen_combALL,Prob_comb_all)
