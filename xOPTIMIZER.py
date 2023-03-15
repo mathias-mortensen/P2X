@@ -104,4 +104,5 @@ if version == 3:
         ## Generate Average Price for all markets for each time (Only for "Combined scenario generation"!!) ##
         ## For DA, aFRR_up & down and mFRR 
         scenarios = Bootsrap('combined',Data_comb,Data_comb_names,n_samples,blocksize,sample_length)
+        Rep_scen_combALL,Prob_comb_all = scenario_comb(scenarios,n_samples,sample_length,n_clusters,c_FCR_scen,blocksize)
         Φ, Ω,c_FCRs,c_aFRR_ups,c_aFRR_downs,c_mFRR_ups,c_DAs,π_r,π_DA = SingleInputData(Rep_scen_combALL,Prob_comb_all)
