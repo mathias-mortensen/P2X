@@ -2,6 +2,9 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import csv
+import random
+from sklearn_extra.cluster import KMedoids # for Kmedoids function
+
 # ---------------------- GENERAL FUNCTIONS --------------------------------
 def assign_var(df,var_name):
     look = df['Variable'].str.find(var_name)
@@ -54,8 +57,8 @@ def import_DA(file_name, Start_date, End_date, Start_date_scen, End_date_scen):
     df_DKDA_raw2020 = df_DKDA_raw[TimeRange2020DA]
     df_DKDA_rawScen = df_DKDA_raw[TimeRangeScenarioDA]
 
-    DA_list = df_DKDA_raw2020['SpotPriceEUR,,'].tolist()
-    DA_list_scen = df_DKDA_rawScen['SpotPriceEUR,,'].tolist()
+    DA_list = df_DKDA_raw2020['SpotPriceEUR'].tolist()
+    DA_list_scen = df_DKDA_rawScen['SpotPriceEUR'].tolist()
 
 
     DA = dict(zip(np.arange(1,len(DA_list)+1),DA_list))
@@ -136,8 +139,13 @@ def import_mFRR(file_name, Start_date, End_date, Start_date_scen, End_date_scen)
 
 
 # Function designed for importing and converting hourly time series csv file (delimiter-flexible))
+<<<<<<< HEAD
 def import_generic(file_name,data_folder, price_column,time_column, Start_date, End_date, Start_date_scen, End_date_scen):
     file_to_open = data_folder + "/" + file_name
+=======
+def import_generic(file_name, price_column,time_column, Start_date, End_date, format):
+    file_to_open = Path("Data/") / file_name
+>>>>>>> 5f0e5fc8c6faeae59749050e88751c08438fa06f
     if '.csv' in file_name:
         df_raw = pd.read_csv(file_to_open,sep=get_delimiter(file_to_open),decimal = ',',low_memory=False)
         df_raw[price_column] = df_raw[price_column].astype(float)
@@ -146,15 +154,20 @@ def import_generic(file_name,data_folder, price_column,time_column, Start_date, 
 
     #Input for model
     TimeRange = (df_raw[time_column] >= Start_date) & (df_raw[time_column]  <= End_date)
-    TimeRange_Scen = (df_raw[time_column] >= Start_date_scen) & (df_raw[time_column]  <= End_date_scen)
+    #TimeRange_Scen = (df_raw[time_column] >= Start_date_scen) & (df_raw[time_column]  <= End_date_scen)
 
     df_generic = df_raw[TimeRange]
-    df_generic_scen = df_raw[TimeRange_Scen]
+    #df_generic_scen = df_raw[TimeRange_Scen]
 
     #Convert from pandas data series to list
-    list_generic = df_generic[price_column].tolist() 
-    c_generic = dict(zip(np.arange(1,len(list_generic)+1),list_generic))
-    return c_generic
+    list_generic = df_generic[price_column].tolist()
+    if format == 'list':
+        return list_generic
+    elif format == 'dict': 
+        c_generic = dict(zip(np.arange(1,len(list_generic)+1),list_generic))
+        return c_generic
+    else:
+        return 0
 
 def demand_assignment(Demand_pattern,TimeRange,k_d):
     demand = list(0 for i in range(0,len(TimeRange)))
@@ -177,3 +190,153 @@ def demand_assignment(Demand_pattern,TimeRange,k_d):
     demand = dict(zip(np.arange(1,len(demand)+1),demand))
     
     return demand
+
+
+def Bootsrap(Type,Data,Data_names,n_samples,blocksize,sample_length):
+
+    if Type == 'single':
+        DA_block = []
+        FCR_block = []
+        aFRR_up_block = []
+        aFRR_down_block = []
+        mFRR_block = []
+
+
+        for x in range(0,len(Data)):
+            #Sample length
+            n = len(Data[x])
+
+            #Split sample in blocks of length blocksize
+
+            blocks = [Data[x][i:i + blocksize] for i in range (0,n,blocksize)]
+
+            #Delete last block if length differs from blocksize 
+            if len(blocks[-1]) != blocksize:
+                del blocks[-1]
+
+
+            samples = np.zeros((n_samples,sample_length))
+
+            for i in range(0,n_samples):
+                t = 0
+                while t < sample_length:
+
+                    r = random.randrange(0,len(blocks))
+                   
+
+                    for j in range(0,blocksize):
+                        samples[i,t+j] = blocks[r][j]
+
+                    t = t + blocksize
+        
+            if Data_names[x] == 'DA':
+                DA_block = samples
+            if Data_names[x] == 'FCR':
+                FCR_block = samples
+            if Data_names[x] == 'aFRR Up':
+                aFRR_up_block = samples
+            if Data_names[x] == 'aFRR Down':
+                aFRR_down_block = samples
+            if Data_names[x] == 'mFRR':
+                mFRR_block = samples
+
+
+                
+    if Type == 'combined':
+
+        ########## Multi Blocks ######## 
+        ### Multi ### 
+        df = pd.DataFrame({'DA':  np.array(Data[0]) , 'aFRR Up:':  np.array(Data[1]), 'aFRR Down': np.array(Data[2]), 'mFRR':  np.array(Data[3])})
+
+        data = df.values.tolist() #Acces element by  data[0][0]
+
+        n = len(data)
+
+        #Split sample in blocks of length blocksize
+
+        blocks = [data[i:i + blocksize ] for i in range (0,n,blocksize)]#Acces element by blocks[0][0][0]
+
+        #Delete last block if length differs from blocksize 
+        if len(blocks[-1]) != blocksize:
+            del blocks[-1]
+
+        len_element = len(blocks[1][1])
+
+        ## creating an array with zeros and same dimensions as blocks 
+        samples = np.zeros((n_samples,sample_length,len_element))
+
+        for i in range(0,n_samples):
+            t = 0
+            while t < sample_length:
+
+                r = random.randrange(0,len(blocks))
+                
+
+                for j in range(0,blocksize):
+                
+                    samples[i,t+j] = blocks[r][j]
+
+                t = t + blocksize
+
+        Combined_blocks = samples
+
+        
+    if Type == 'single':
+        
+            return  DA_block,FCR_block,aFRR_up_block,aFRR_down_block,mFRR_block
+
+    if Type == 'combined': 
+        return Combined_blocks
+
+
+def K_Medoids(scenarios,n_clusters): #Scenario reduction from all scenarios to n_clusters 
+    Red_Scen = []   ## Red_Scen[0] = DA scenarios, Red_Scen[1] = FCR scenarios, Red_Scen[2] = aFRR_up scenarios, Red_Scen[3] = aFRR_Down scenarios, Red_Scen[4] = mFRR scenarios 
+    Prob = np.zeros((n_clusters,len(scenarios))) # Prob scenario 1 in DA = Prob[0,0], Prob scenario 2 in DA = Prob[1,0] osv... Prob scenario 1 FCR = Prob[0,1] .....   
+
+    for i in range(0,len(scenarios)):
+    
+        kmedoids = KMedoids(n_clusters=n_clusters,metric='euclidean').fit(scenarios[i])
+        Red_Scen.append(kmedoids.cluster_centers_) # Calculating scenario probability ## 
+       
+        for j in range(0,n_clusters):
+            Prob[j,i] = np.count_nonzero(kmedoids.labels_ == j)/len(kmedoids.labels_)
+    
+    return Red_Scen,Prob
+
+def SingleInputData(Rep_scen,Prob):
+
+    x = len(Rep_scen[0]) # same as n_clusters
+    hours = len(Rep_scen[0][0]) # same as sample_length
+    Ω = x**4 #number of "reserve scenarios"
+    Φ = x # number of DA scenarios
+
+    c_FCRs = {}
+    c_aFRR_ups = {}
+    c_aFRR_downs = {}
+    c_mFRR_ups = {}
+    π_r = {} #probability?
+
+    for a in range(1,x+1):
+        for b in range(1,x+1):
+            for c in range(1,x+1):
+                for d in range(1,x+1):
+                
+                    w = (a-1)*x**3 + (b-1)*x**2 + (c-1)*x + d
+                    π_r[w] = Prob[a-1,1] * Prob[b-1,2] * Prob[c-1,3] * Prob[d-1,4] 
+                    
+                    for t in range(1,hours+1):
+
+                        c_FCRs[(w,t)] = Rep_scen[1][a-1][t-1]
+                        c_aFRR_ups[(w,t)] = Rep_scen[2][b-1][t-1]
+                        c_aFRR_downs[(w,t)] = Rep_scen[3][c-1][t-1]
+                        c_mFRR_ups[(w,t)] = Rep_scen[4][d-1][t-1]
+    
+
+    c_DAs = {}
+    π_DA = {}
+    for i in range(1,x+1):
+        π_DA[(i)] = Prob[i-1,0] 
+        for t in range(1,hours+1):
+            c_DAs[(i,t)] = Rep_scen[0][i-1][t-1]
+
+    return Φ, Ω,c_FCRs,c_aFRR_ups,c_aFRR_downs,c_mFRR_ups,c_DAs,π_r,π_DA
