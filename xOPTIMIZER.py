@@ -85,7 +85,7 @@ if version == 3:
     Data_comb_names = ['DA','aFRR Up','aFRR Down','mFRR']
 
     sampling_method = assign_var(df_run,'scenario sampling method')
-    block_size = assign_var(df_run,'block size') #number of hours for each 
+    blocksize = assign_var(df_run,'block size') #number of hours for each 
     sample_length = assign_var(df_run,'sample length') #number of hours for each scenario - should depend on time period ?
     n_clusters = int(assign_var(df_run,'number of clusters'))
 
@@ -170,6 +170,7 @@ model.r_out = assign_var(df_param,'r_out') # exclude from V1 and V2
 if version == 2 or version == 3:
     model.R_FCR_max = assign_var(df_param,'R_FCR_max') 
     model.R_FCR_min = assign_var(df_param,'R_FCR_min')
+    model.bidres_FCR = assign_var(df_param,'bidres_FCR')
     model.R_aFRR_max = assign_var(df_param,'R_aFRR_max') #max bid size
     model.R_aFRR_min = assign_var(df_param,'R_aFRR_min') #min bid size 1 MW
     model.bidres_aFRR = assign_var(df_param,'bidres_aFRR') #100kW bid resolution
@@ -236,15 +237,17 @@ if version == 3:
 # ---------------- Objective function -----------------------------
 
 if version == 1:
-    expr = sum((model.c_DA[t]+model.cT[t])*model.p_grid[t] for t in model.T) #for φ in model.Φ)
-    model.objective = pe.Objective(sense = pe.minimize, expr=expr)
-
-    #Objective
     expr = sum((model.c_DA[1,t]+model.CT)*model.p_import[1,t] - (model.c_DA[1,t]-model.PT)*model.p_export[1,t]  for t in model.T)
     model.objective = pe.Objective(sense = pe.minimize, expr=expr)
 
 
+if version == 2:
+    expr = sum((model.c_DA[1,t]+model.CT)*model.p_import[1,t] - (model.c_DA[1,t]-model.PT)*model.p_export[1,t] - (model.c_FCR[1,t]*model.r_FCR[1,t] + model.c_aFRR_up[1,t]*model.r_aFRR_up[1,t] + model.c_aFRR_down[1,t]*model.r_aFRR_down[1,t] + model.c_mFRR_up[1,t]*model.r_mFRR_up[1,t]) for t in model.T)
+    model.objective = pe.Objective(sense = pe.minimize, expr=expr)
 
+if version == 3:
+    expr = sum(sum(model.π_r[ω]*(-(model.c_FCR[ω,t]*model.r_FCR[ω,t] + model.c_aFRR_up[ω,t]*model.r_aFRR_up[ω,t] + model.c_aFRR_down[ω,t]*model.r_aFRR_down[ω,t] + model.c_mFRR_up[ω,t]*model.r_mFRR_up[ω,t]) + sum(π_DA[φ]*((model.c_DA[φ,t]+model.CT)*model.p_import[ω,t] - (model.c_DA[φ,t]-model.PT)*model.p_export[ω,t]) for φ in model.Φ)) for ω in model.Ω) for t in model.T)
+    model.objective = pe.Objective(sense = pe.minimize, expr=expr)
 
 
 #-----------------------------------Power Flow Constraints-----------------------------------------------------------
@@ -369,37 +372,110 @@ if version == 2 or version == 3:
         model.c16.add(model.bx_mFRR_up[t] >= (model.R_mFRR_min/model.bidres_mFRR)*model.zmFRRup[t])
         model.c16.add(model.bx_mFRR_up[t] <= (model.R_mFRR_max/model.bidres_mFRR)*model.zmFRRup[t])
 
+if version == 2:   
+    model.c17 = pe.ConstraintList()
+    for t in model.T:
+        model.c17.add(model.r_FCR[1,t] == model.bx_FCR[t]*(model.bidres_FCR))
+        model.c17.add(model.r_aFRR_up[1,t] == model.bx_aFRR_up[t]*(model.bidres_aFRR))
+        model.c17.add(model.r_aFRR_down[1,t] == model.bx_aFRR_down[t]*(model.bidres_aFRR))
+        model.c17.add(model.r_mFRR_up[1,t] == model.bx_mFRR_up[t]*model.bidres_mFRR)
 
-
-
-
-
+    model.c21 = pe.ConstraintList()
+    for t in model.T_block:
+        model.c21.add(model.r_FCR[1,t+1] == model.r_FCR[1,t])
+        model.c21.add(model.r_FCR[1,t+2] == model.r_FCR[1,t])
+        model.c21.add(model.r_FCR[1,t+3] == model.r_FCR[1,t]) 
 
 
 if version == 3:
-    model.c53_s = pe.ConstraintList()
+    model.c18 = pe.ConstraintList()
     for t in model.T:
-        model.c53_s.add(model.b_FCR[t] == bidres_FCR* model.bx_FCR[t])
-        model.c53_s.add(model.b_aFRR_up[t] == model.bx_aFRR_up[t]*(model.bidres_aFRR))
-        model.c53_s.add(model.b_aFRR_down[t] == model.bx_aFRR_down[t]*(model.bidres_aFRR))
-        model.c53_s.add(model.b_mFRR_up[t] == model.bx_mFRR_up[t]*model.bidres_mFRR)
+        model.c18.add(model.b_FCR[t] == model.bidres_FCR* model.bx_FCR[t])
+        model.c18.add(model.b_aFRR_up[t] == model.bx_aFRR_up[t]*(model.bidres_aFRR))
+        model.c18.add(model.b_aFRR_down[t] == model.bx_aFRR_down[t]*(model.bidres_aFRR))
+        model.c18.add(model.b_mFRR_up[t] == model.bx_mFRR_up[t]*model.bidres_mFRR)
 
-    model.c53_tu = pe.ConstraintList()
+    model.c19 = pe.ConstraintList()
     M_FCR = max(c_FCRs.values()) # make sure that the correct series is applied (FCR / FCRs ?)
     M_aFRR_up = max(c_aFRR_ups.values()) 
     M_aFRR_down = max(c_aFRR_downs.values())
     M_mFRR_up = max(c_mFRR_ups.values())
     for ω in model.Ω:
         for t in model.T:
-            model.c53_tu.add(model.c_FCR[ω,t] - model.β_FCR[t] <= M_FCR*model.δ_FCR[ω,t])
-            model.c53_tu.add(model.c_aFRR_up[ω,t] - model.β_aFRR_up[t] <= M_aFRR_up*model.δ_aFRR_up[ω,t])
-            model.c53_tu.add(model.c_aFRR_down[ω,t] - model.β_aFRR_down[t] <= M_aFRR_down*model.δ_aFRR_down[ω,t])
-            model.c53_tu.add(model.c_mFRR_up[ω,t] - model.β_mFRR_up[t] <= M_mFRR_up*model.δ_mFRR_up[ω,t])
-            model.c53_tu.add(model.β_FCR[t] - model.c_FCR[ω,t] <= M_FCR * (1 - model.δ_FCR[ω,t]))
-            model.c53_tu.add(model.β_aFRR_up[t] - model.c_aFRR_up[ω,t] <= M_aFRR_up * (1 - model.δ_aFRR_up[ω,t]))
-            model.c53_tu.add(model.β_aFRR_down[t] - model.c_aFRR_down[ω,t] <= M_aFRR_down * (1 - model.δ_aFRR_down[ω,t]))
-            model.c53_tu.add(model.β_mFRR_up[t] - model.c_mFRR_up[ω,t] <= M_mFRR_up * (1 - model.δ_mFRR_up[ω,t]))
+            model.c19.add(model.c_FCR[ω,t] - model.β_FCR[t] <= M_FCR*model.δ_FCR[ω,t])
+            model.c19.add(model.c_aFRR_up[ω,t] - model.β_aFRR_up[t] <= M_aFRR_up*model.δ_aFRR_up[ω,t])
+            model.c19.add(model.c_aFRR_down[ω,t] - model.β_aFRR_down[t] <= M_aFRR_down*model.δ_aFRR_down[ω,t])
+            model.c19.add(model.c_mFRR_up[ω,t] - model.β_mFRR_up[t] <= M_mFRR_up*model.δ_mFRR_up[ω,t])
+            model.c19.add(model.β_FCR[t] - model.c_FCR[ω,t] <= M_FCR * (1 - model.δ_FCR[ω,t]))
+            model.c19.add(model.β_aFRR_up[t] - model.c_aFRR_up[ω,t] <= M_aFRR_up * (1 - model.δ_aFRR_up[ω,t]))
+            model.c19.add(model.β_aFRR_down[t] - model.c_aFRR_down[ω,t] <= M_aFRR_down * (1 - model.δ_aFRR_down[ω,t]))
+            model.c19.add(model.β_mFRR_up[t] - model.c_mFRR_up[ω,t] <= M_mFRR_up * (1 - model.δ_mFRR_up[ω,t]))
 
+
+    model.c20 = pe.ConstraintList()
+    for ω in model.Ω:
+        for t in model.T:
+            model.c20.add(model.r_FCR[ω,t] == model.b_FCR[t] * model.δ_FCR[ω,t])
+            model.c20.add(model.r_aFRR_up[ω,t] == model.b_aFRR_up[t] * model.δ_aFRR_up[ω,t])
+            model.c20.add(model.r_aFRR_down[ω,t] == model.b_aFRR_down[t] * model.δ_aFRR_down[ω,t])
+            model.c20.add(model.r_mFRR_up[ω,t] == model.b_mFRR_up[t] * model.δ_mFRR_up[ω,t])
+
+
+# --------------- Ensures that the FCR bid does not change for 4 consecutive hours -----------------
+    model.c22 = pe.ConstraintList()
+    for t in model.T_block:
+        model.c22.add(model.b_FCR[t+1] == model.b_FCR[t])
+        model.c22.add(model.b_FCR[t+2] == model.b_FCR[t])
+        model.c22.add(model.b_FCR[t+3] == model.b_FCR[t]) 
+
+    model.c23 = pe.ConstraintList()
+    for t in model.T_block: 
+        model.c23.add(model.β_FCR[t+1] == model.β_FCR[t]) 
+        model.c23.add(model.β_FCR[t+2] == model.β_FCR[t]) 
+        model.c23.add(model.β_FCR[t+3] == model.β_FCR[t]) 
+
+
+
+
+# --------------------------grid constraints taking reserves into account--------------------------
+
+if version == 2 or version == 3:
+    # the possible increase in exports due to grid connection restrictions must surpass the supplied up-regulation capacity
+    model.c24 = pe.ConstraintList()
+    for ω in model.Ω:
+        for t in model.T:
+            model.c24.add(model.P_grid_cap + (model.p_import[ω,t]-model.p_export[ω,t])  >= model.r_FCR[ω,t] + model.r_aFRR_up[ω,t] + model.r_mFRR_up[ω,t])
+
+    # the possible increase in imports, due to grid connection restrictions, must surpass the supplied down-regulation capacity
+    model.c25 = pe.ConstraintList()
+    for ω in model.Ω:
+        for t in model.T:
+            model.c25.add(model.P_grid_cap - (model.p_import[ω,t]-model.p_export[ω,t])  >= model.r_FCR[ω,t] + model.r_aFRR_down[ω,t])
+
+    # the available increase in electrolyzer consumption must surpass the provided down-regulation
+    model.c26 = pe.ConstraintList()
+    for ω in model.Ω:
+        for t in model.T:
+            model.c26.add(model.P_pem_cap - model.p_pem[ω,t]  >= model.r_FCR[ω,t] + model.r_aFRR_down[ω,t])
+
+    # the available decrease in electrolyzer consumption must surpass the provided up-regulation
+    model.c27 = pe.ConstraintList()
+    for ω in model.Ω:
+        for t in model.T:
+            model.c27.add(model.p_pem[ω,t] - model.P_pem_min >= model.r_FCR[ω,t] + model.r_aFRR_up[ω,t] + model.r_mFRR_up[ω,t])
+
+if version == 3:
+    # the bid of reserves must not surpass the full range of the electrolyzer loading
+    model.c28 = pe.ConstraintList()
+    for t in model.T:
+        model.c28.add(model.b_FCR[t]*2 + model.b_aFRR_up[t] + model.b_aFRR_down[t] + model.b_mFRR_up[t] <= model.P_pem_cap - model.P_pem_min)
+
+
+#-------------------------------------SOLVE THE MODEL-----------------------------------------------
+
+instance = model.create_instance()
+results = solver.solve(instance)
+print(results)
 
 
 
