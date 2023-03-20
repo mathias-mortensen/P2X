@@ -22,7 +22,6 @@ def get_delimiter(file_path, bytes = 4096):
 
 # ----------------------- READING DATA -------------------------------------
 
-
 ## PV INPUT DATA PROCESSING - can be changed to match the data file
 def import_PV(filename, Start_date, End_date, Start_date_scen, End_date_scen):
     file_to_open = Path("Data/") / filename
@@ -170,7 +169,6 @@ def demand_assignment(Demand_pattern,TimeRange,k_d):
     if Demand_pattern == 'Hourly':
         for i in range(0,len(demand),1):
             demand[i] = k_d
-    
     if Demand_pattern == 'Daily':
         for i in range(0,len(demand),24):
             demand[i+23] = k_d*24    
@@ -422,3 +420,12 @@ def scenario_comb(scenarios,n_samples,sample_length,n_clusters,c_FCR_scen,blocks
 
 
 
+#def H2_bounds(sEfficiency)
+#    if sEfficiency == 'pw'
+
+#
+def write_1d_to_2d(d1):
+    d2 = {}
+    for t in range(1,len(d1)+1):
+        d2[(1,t)] = d1[t]
+    return d2
