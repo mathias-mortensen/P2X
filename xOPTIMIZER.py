@@ -6,6 +6,11 @@ import pandas as pd
 import numpy as np
 #---------------------------------------------------------------------------
 from xFunctions import *  # Contains all custom functions created for the model
+#from xFunctions import first_stage_to_dict
+def first_stage_to_dict(T,var_name):
+    list_x = [var_name[i].value for i in range(1,T+1)]
+    dict_x = dict(zip(np.arange(1,len(list_x)+1),list_x))
+    return dict_x
 #---------------------------------------------------------------------------
 
 #---------------------------- Input Data (from master excel file) -------------------------------------
@@ -478,266 +483,263 @@ results = solver.solve(instance)
 print(results)
 
 #------------------------------------ Create model 'SolX' for second stage optimization of model V3 ------------------------------
+if version == 3:
+    SolX = pe.ConcreteModel() # define new model for solving
+    SolX.T = pe.RangeSet(1,T)
+    SolX.Φ = pe.RangeSet(1,Φ) # Needed, as the uncertainty of the DA-market is still present and should be taken into account
+    Ω = 1
+    SolX.Ω = pe.RangeSet(1,Ω)
+    SolX.T_block = pe.RangeSet(1,T,4)
 
-SolX = pe.ConcreteModel() # define new model for solving
-SolX.T = pe.RangeSet(1,T)
-SolX.Φ = pe.RangeSet(1,Φ) # Needed, as the uncertainty of the DA-market is still present and should be taken into account
-Ω = 1
-SolX.Ω = pe.RangeSet(1,Ω)
-SolX.T_block = pe.RangeSet(1,T,4)
+    #initializing parameters
+    SolX.P_PV_max = pe.Param(SolX.T, initialize=P_PV_max)
+    SolX.c_DAs = pe.Param(SolX.Φ, SolX.T, initialize=c_DAs) # Day-ahead clearing price scenarios
+    SolX.c_DA = pe.Param(SolX.T, initialize=c_DA) # The actual DA clearing price (not applied in optimizaton, only for the OPEX calculation)
+    SolX.m_demand = pe.Param(SolX.T, initialize = Demand)
+    SolX.c_FCR = pe.Param(SolX.T,initialize = c_FCR)                        #No longer scenario dependant
+    SolX.c_aFRR_up = pe.Param(SolX.T, initialize = c_aFRR_up)    #No longer scenario dependant
+    SolX.c_aFRR_down = pe.Param(SolX.T, initialize = c_aFRR_down)#No longer scenario dependant
+    SolX.c_mFRR_up = pe.Param(SolX.T, initialize = c_mFRR)    #No longer scenario dependant
+    SolX.π_DA = pe.Param(SolX.Φ, initialize = π_DA)
 
-#initializing parameters
-SolX.P_PV_max = pe.Param(SolX.T, initialize=P_PV_max)
-SolX.c_DAs = pe.Param(SolX.Φ, SolX.T, initialize=c_DAs) # Day-ahead clearing price scenarios
-SolX.c_DA = pe.Param(SolX.T, initialize=c_DA) # The actual DA clearing price (not applied in optimizaton, only for the OPEX calculation)
-SolX.m_demand = pe.Param(SolX.T, initialize = Demand)
-SolX.c_FCR = pe.Param(SolX.T,initialize = c_FCR)                        #No longer scenario dependant
-SolX.c_aFRR_up = pe.Param(SolX.T, initialize = c_aFRR_up)    #No longer scenario dependant
-SolX.c_aFRR_down = pe.Param(SolX.T, initialize = c_aFRR_down)#No longer scenario dependant
-SolX.c_mFRR_up = pe.Param(SolX.T, initialize = c_mFRR)    #No longer scenario dependant
-SolX.π_DA = pe.Param(SolX.Φ, initialize = π_DA)
+    # 1D parameters
+    SolX.P_pem_cap = value(model.P_pem_cap) 
+    SolX.P_pem_min = value(model.P_pem_min)
+    SolX.P_com = value(model.P_com)
+    SolX.P_grid_cap = value(model.P_grid_cap)
+    #SolX.k_CR = k_CR
+    SolX.eff = value(model.eff)
+    SolX.r_in = value(model.r_in)
+    SolX.r_out = value(model.r_out)
+    #SolX.k_d = k_d
+    SolX.m_Pu = value(model.m_Pu) 
+    SolX.m_Ro = value(model.m_Ro)
+    SolX.S_Pu_max = value(model.S_Pu_max)
+    SolX.S_raw_max = value(model.S_raw_max)
+    SolX.m_H2_max = m_H2_max
+    SolX.ramp_pem = value(model.ramp_pem)
+    #SolX.ramp_com = ramp_com
+    #SolX.P_PV_cap = P_PV_cap
+    SolX.R_FCR_max = value(model.R_FCR_max)
+    SolX.R_FCR_min = value(model.R_FCR_min)
+    SolX.R_aFRR_max = value(model.R_aFRR_max) #max bid size
+    SolX.R_aFRR_min = value(model.R_aFRR_min) #min bid size 1 MW
+    SolX.bidres_aFRR = value(model.bidres_aFRR) #100kW bid resolution
+    SolX.R_mFRR_max = value(model.R_mFRR_max) #max bid size
+    SolX.R_mFRR_min = value(model.R_mFRR_min) #min bid size 1 MW
+    SolX.bidres_mFRR = value(model.bidres_mFRR) #100kW bid resolution
+    SolX.PT = value(model.PT)
+    SolX.CT = value(model.CT)
 
-# 1D parameters
-SolX.P_pem_cap = value(model.P_pem_cap) 
-SolX.P_pem_min = value(model.P_pem_min)
-SolX.P_com = value(model.P_com)
-SolX.P_grid_cap = value(model.P_grid_cap)
-#SolX.k_CR = k_CR
-SolX.eff = value(model.eff)
-SolX.r_in = value(model.r_in)
-SolX.r_out = value(model.r_out)
-#SolX.k_d = k_d
-SolX.S_Pu_max = value(model.S_Pu_max)
-SolX.S_raw_max = value(model.S_raw_max)
-SolX.m_H2_max = m_H2_max
-SolX.ramp_pem = value(model.ramp_pem)
-#SolX.ramp_com = ramp_com
-#SolX.P_PV_cap = P_PV_cap
-SolX.R_FCR_max = value(model.R_FCR_max)
-SolX.R_FCR_min = value(model.R_FCR_min)
-SolX.R_aFRR_max = value(model.R_aFRR_max) #max bid size
-SolX.R_aFRR_min = value(model.R_aFRR_min) #min bid size 1 MW
-SolX.bidres_aFRR = value(model.bidres_aFRR) #100kW bid resolution
-SolX.R_mFRR_max = value(model.R_mFRR_max) #max bid size
-SolX.R_mFRR_min = value(model.R_mFRR_min) #min bid size 1 MW
-SolX.bidres_mFRR = value(model.bidres_mFRR) #100kW bid resolution
-SolX.PT = value(model.PT)
-SolX.CT = value(model.CT)
+    #defining 2D variables
+    SolX.z_grid = pe.Var(SolX.Ω, SolX.T, domain = pe.Binary) #binary decision variable
+    SolX.p_import = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.p_export = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.p_PV = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.p_pem = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals, bounds=(0,SolX.P_pem_cap))
+    SolX.m_H2 = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals, bounds=(0,m_H2_max))
+    SolX.m_CO2 = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.m_Ri = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.s_raw = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    SolX.s_Pu = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    #SolX.m_Ro = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    #SolX.m_Pu = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
+    #SolX.m_H2O = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
 
-#defining 2D variables
-SolX.z_grid = pe.Var(SolX.Ω, SolX.T, domain = pe.Binary) #binary decision variable
-SolX.p_import = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.p_export = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.p_PV = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.p_pem = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals, bounds=(0,SolX.P_pem_cap))
-SolX.m_H2 = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals, bounds=(0,m_H2_max))
-SolX.m_CO2 = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.m_Ri = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.s_raw = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-SolX.s_Pu = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-#SolX.m_Ro = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-#SolX.m_Pu = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-#SolX.m_H2O = pe.Var(SolX.Ω, SolX.T, domain=pe.NonNegativeReals)
-
-SolX.zFCR = pe.Var(SolX.T, domain = pe.Binary)
-SolX.zaFRRup = pe.Var(SolX.T, domain = pe.Binary)
-SolX.zaFRRdown = pe.Var(SolX.T, domain = pe.Binary) #binary decision variable
-SolX.zmFRRup = pe.Var(SolX.T, domain = pe.Binary) #binary decision variable
-
-
-# Bid volume - PARAMETERS INSTEAD OF VARIABLES!
-
-SolX.b_FCR =pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_FCR))
-SolX.b_aFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_aFRR_up))
-SolX.b_aFRR_down = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_aFRR_down))
-SolX.b_mFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_mFRR_up))
-SolX.β_FCR =pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_FCR))
-SolX.β_aFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_aFRR_up))
-SolX.β_aFRR_down = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_aFRR_down))
-SolX.β_mFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_mFRR_up))
-
-#bid acceptance binaries
-SolX.δ_FCR = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
-SolX.δ_aFRR_up = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
-SolX.δ_aFRR_down = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
-SolX.δ_mFRR_up = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
-
-# Reserves "won"
-SolX.r_FCR =pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals) #Defining the variable of FCR reserve capacity
-SolX.r_aFRR_up = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
-SolX.r_aFRR_down = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
-SolX.r_mFRR_up = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
-
-SolX.vOPEX = pe.Var(SolX.T, domain = pe.Reals)
-
-#Objective---------------------------------------------------
-expr = sum((-(SolX.c_FCR[t]*SolX.r_FCR[1,t] + SolX.c_aFRR_up[t]*SolX.r_aFRR_up[1,t] + SolX.c_aFRR_down[t]*SolX.r_aFRR_down[1,t] + SolX.c_mFRR_up[t]*SolX.r_mFRR_up[1,t]) + sum(π_DA[φ]*((SolX.c_DAs[φ,t]+SolX.CT)*SolX.p_import[1,t] - (SolX.c_DAs[φ,t]-SolX.PT)*SolX.p_export[1,t]) for φ in SolX.Φ)) for t in SolX.T)
-SolX.objective = pe.Objective(sense = pe.minimize, expr=expr)
-#CONSTRAINTS---------------------------------------------------
-SolX.c53_c = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_c.add((SolX.p_import[1,t]-SolX.p_export[1,t]) + SolX.p_PV[1,t] == SolX.p_pem[1,t] + SolX.P_com)
-
-SolX.c53_de = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_de.add(SolX.p_import[1,t] <= SolX.z_grid[1,t]*SolX.P_grid_cap)
-    SolX.c53_de.add(SolX.p_export[1,t] <= (1-SolX.z_grid[1,t])*SolX.P_grid_cap)
-
-SolX.c53_f = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_f.add(SolX.p_PV[1,t]<= SolX.P_PV_max[t])
-
-SolX.c53_g = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_g.add(SolX.P_pem_min <= SolX.p_pem[1,t])
-    SolX.c53_g.add(SolX.p_pem[1,t] <= SolX.P_pem_cap)
-
-#may not work after the implementation of scenarios
-if sEfficiency == 'pw':
-  SolX.c_piecewise = Piecewise(  SolX.T,
-                          SolX.m_H2,SolX.p_pem,
-                        pw_pts=pem_setpoint,
-                        pw_constr_type='EQ',
-                        f_rule=hydrogen_mass_flow,
-                        pw_repn='SOS2')
-                   
-if sEfficiency == 'k':
-  SolX.c53_h = pe.ConstraintList()
-  for t in SolX.T:
-    SolX.c53_h.add(SolX.p_pem[1,t] == SolX.m_H2[1,t]/SolX.eff)
-
-SolX.c53_i = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_i.add(SolX.m_CO2[1,t] == SolX.r_in*SolX.m_H2[1,t])
-
-SolX.c53_j = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_j.add(SolX.m_Ri[1,t] == SolX.m_H2[1,t] + SolX.m_CO2[1,t])
-
-SolX.c53_k = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_k.add(SolX.s_Raw[1,t] <= SolX.S_raw_max)
-
-SolX.c53_not_included1 = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_not_included1.add(SolX.m_Ro[1,t] == SolX.m_Pu[1,t] + SolX.m_H2O[t])
-
-SolX.c53_not_included2 = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_not_included2.add(SolX.m_Pu[1,t] == SolX.r_out * SolX.m_H2O[t])
-
-SolX.c53_not_included3 = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_not_included3.add(SolX.m_Pu[1,t] == SolX.k_d)
-
-SolX.c53_l = pe.ConstraintList()
-for t in SolX.T:
-    if t >= 2:
-      SolX.c53_l.add(SolX.s_Raw[1,t] == SolX.s_raw[t-1] + SolX.m_Ri[1,t] - SolX.m_Ro[1,t])
-
-SolX.c53_m = pe.ConstraintList()
-SolX.c53_m.add(SolX.s_raw[1] == 0.5*SolX.S_raw_max + SolX.m_Ri[1] - SolX.m_Ro[1])
-SolX.c53_m.add(0.5*SolX.S_raw_max == SolX.s_raw[1,T])
-
-#SolX.c14_1 = pe.ConstraintList()
-#for t in SolX.T:
-#  SolX.c14_1.add(0 <= SolX.s_Pu[1,t])
-
-SolX.c53_n = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_n.add(SolX.s_Pu[1,t] <= SolX.S_Pu_max)
-
-# Pure methanol level at "time zero" is zero, therefore the level at time 1 equals the inflow in time 1
-SolX.c53_o = pe.ConstraintList()
-SolX.c53_o.add(SolX.s_Pu[1] == SolX.m_Pu[1])
-
-SolX.c53_p = pe.ConstraintList()
-for t in SolX.T:
-    if t >= 2:
-      SolX.c53_p.add(SolX.s_Pu[1,t] == SolX.s_Pu[t-1] + SolX.m_Pu[1,t] - SolX.m_demand[t])
-
-SolX.c53_qr = pe.ConstraintList()
-for t in SolX.T:
-    if t >= 2:
-      SolX.c53_qr.add(-SolX.ramp_pem * SolX.P_pem_cap <= SolX.p_pem[1,t] - SolX.p_pem[t-1])
-      SolX.c53_qr.add(SolX.p_pem[1,t] - SolX.p_pem[t-1] <= SolX.ramp_pem * SolX.P_pem_cap)
-
-SolX.c53_uv = pe.ConstraintList()
-M_FCR = 491.53 # max value in 2020-2021
-M_aFRR_up = 154.59 # max value in 2020-2021
-M_aFRR_down = 136.681 # max value in 2020-2021
-M_mFRR_up = 698.31 # max value in 2020-2021
-for t in SolX.T:
-    SolX.c53_uv.add(SolX.c_FCR[t] - SolX.β_FCR[t] <= M_FCR*SolX.δ_FCR[t])
-    SolX.c53_uv.add(SolX.c_aFRR_up[t] - SolX.β_aFRR_up[t] <= M_aFRR_up*SolX.δ_aFRR_up[t])
-    SolX.c53_uv.add(SolX.c_aFRR_down[t] - SolX.β_aFRR_down[t] <= M_aFRR_down*SolX.δ_aFRR_down[t])
-    SolX.c53_uv.add(SolX.c_mFRR_up[t] - SolX.β_mFRR_up[t] <= M_mFRR_up*SolX.δ_mFRR_up[t])
-    SolX.c53_uv.add(SolX.β_FCR[t] - SolX.c_FCR[t] <= M_FCR * (1 - SolX.δ_FCR[t]))
-    SolX.c53_uv.add(SolX.β_aFRR_up[t] - SolX.c_aFRR_up[t] <= M_aFRR_up * (1 - SolX.δ_aFRR_up[t]))
-    SolX.c53_uv.add(SolX.β_aFRR_down[t] - SolX.c_aFRR_down[t] <= M_aFRR_down * (1 - SolX.δ_aFRR_down[t]))
-    SolX.c53_uv.add(SolX.β_mFRR_up[t] - SolX.c_mFRR_up[t] <= M_mFRR_up * (1 - SolX.δ_mFRR_up[t]))
-
-SolX.c53_x = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_x.add(SolX.r_FCR[t] == SolX.b_FCR[t] * SolX.δ_FCR[t])
-    SolX.c53_x.add(SolX.r_aFRR_up[t] == SolX.b_aFRR_up[t] * SolX.δ_aFRR_up[t])
-    SolX.c53_x.add(SolX.r_aFRR_down[t] == SolX.b_aFRR_down[t] * SolX.δ_aFRR_down[t])
-    SolX.c53_x.add(SolX.r_mFRR_up[t] == SolX.b_mFRR_up[t] * SolX.δ_mFRR_up[t])
+    SolX.zFCR = pe.Var(SolX.T, domain = pe.Binary)
+    SolX.zaFRRup = pe.Var(SolX.T, domain = pe.Binary)
+    SolX.zaFRRdown = pe.Var(SolX.T, domain = pe.Binary) #binary decision variable
+    SolX.zmFRRup = pe.Var(SolX.T, domain = pe.Binary) #binary decision variable
 
 
-# grid constraints taking reserves into account
-SolX.c53_aa = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_aa.add(SolX.P_grid_cap + (SolX.p_import[1,t]-SolX.p_export[1,t])  >= SolX.r_FCR[t] + SolX.r_aFRR_up[t] + SolX.r_mFRR_up[t])
+    # Bid volume - PARAMETERS INSTEAD OF VARIABLES!
+    SolX.b_FCR =pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_FCR))
+    SolX.b_aFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_aFRR_up))
+    SolX.b_aFRR_down = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_aFRR_down))
+    SolX.b_mFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.b_mFRR_up))
+    SolX.β_FCR =pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_FCR))
+    SolX.β_aFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_aFRR_up))
+    SolX.β_aFRR_down = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_aFRR_down))
+    SolX.β_mFRR_up = pe.Param(SolX.T, initialize = first_stage_to_dict(T,instance.β_mFRR_up))
 
-SolX.c53_ab = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_ab.add(SolX.P_grid_cap - (SolX.p_import[1,t]-SolX.p_export[1,t])  >= SolX.r_FCR[t] + SolX.r_aFRR_down[t])
+    #bid acceptance binaries
+    SolX.δ_FCR = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
+    SolX.δ_aFRR_up = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
+    SolX.δ_aFRR_down = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
+    SolX.δ_mFRR_up = pe.Var(SolX.T, domain = pe.Binary) #bid acceptance binary
 
-SolX.c53_ac = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_ac.add(SolX.P_pem_cap - SolX.p_pem[1,t]  >= SolX.r_FCR[t] + SolX.r_aFRR_down[t])
+    # Reserves "won"
+    SolX.r_FCR =pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals) #Defining the variable of FCR reserve capacity
+    SolX.r_aFRR_up = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
+    SolX.r_aFRR_down = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
+    SolX.r_mFRR_up = pe.Var(SolX.Ω, SolX.T, domain = pe.NonNegativeReals)
 
-SolX.c53_ad = pe.ConstraintList()
-for t in SolX.T:
-    SolX.c53_ad.add(SolX.p_pem[1,t] - SolX.P_pem_min >= SolX.r_FCR[t] + SolX.r_aFRR_up[t] + SolX.r_mFRR_up[t])
+    SolX.vOPEX = pe.Var(SolX.T, domain = pe.Reals)
 
-SolX.CalcvOpex = pe.ConstraintList()
-for t in SolX.T:
-    SolX.CalcvOpex.add(SolX.vOPEX[t] == -(SolX.c_FCR[t]*SolX.r_FCR[t] + SolX.c_aFRR_up[t]*SolX.r_aFRR_up[t] + SolX.c_aFRR_down[t]*SolX.r_aFRR_down[t] + SolX.c_mFRR_up[t]*SolX.r_mFRR_up[t]) +(SolX.c_DA[t]+SolX.CT)*SolX.p_import[1,t] - (SolX.c_DA[t]-SolX.PT)*SolX.p_export[1,t])
-###############SOLVE THE MODEL########################
+    #Objective---------------------------------------------------
+    expr = sum((-(SolX.c_FCR[t]*SolX.r_FCR[1,t] + SolX.c_aFRR_up[t]*SolX.r_aFRR_up[1,t] + SolX.c_aFRR_down[t]*SolX.r_aFRR_down[1,t] + SolX.c_mFRR_up[t]*SolX.r_mFRR_up[1,t]) + sum(π_DA[φ]*((SolX.c_DAs[φ,t]+SolX.CT)*SolX.p_import[1,t] - (SolX.c_DAs[φ,t]-SolX.PT)*SolX.p_export[1,t]) for φ in SolX.Φ)) for t in SolX.T)
+    SolX.objective = pe.Objective(sense = pe.minimize, expr=expr)
+    #CONSTRAINTS---------------------------------------------------
+    SolX.c53_c = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_c.add((SolX.p_import[1,t]-SolX.p_export[1,t]) + SolX.p_PV[1,t] == SolX.p_pem[1,t] + SolX.P_com)
+
+    SolX.c53_de = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_de.add(SolX.p_import[1,t] <= SolX.z_grid[1,t]*SolX.P_grid_cap)
+        SolX.c53_de.add(SolX.p_export[1,t] <= (1-SolX.z_grid[1,t])*SolX.P_grid_cap)
+
+    SolX.c53_df = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_df.add(SolX.p_PV[1,t]<= SolX.P_PV_max[t])
+
+    SolX.c53_g = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_g.add(SolX.P_pem_min <= SolX.p_pem[1,t])
+        SolX.c53_g.add(SolX.p_pem[1,t] <= SolX.P_pem_cap)
+
+    #may not work after the implementation of scenarios
+    if sEfficiency == 'pw':
+        SolX.c_piecewise = Piecewise(  SolX.T,
+                                SolX.m_H2,SolX.p_pem,
+                                pw_pts=pem_setpoint,
+                                pw_constr_type='EQ',
+                                f_rule=hydrogen_mass_flow,
+                                pw_repn='SOS2')
+                        
+    if sEfficiency == 'k':
+        SolX.c53_h = pe.ConstraintList()
+        for t in SolX.T:
+            SolX.c53_h.add(SolX.p_pem[1,t] == SolX.m_H2[1,t]/SolX.eff)
+
+    SolX.c53_i = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_i.add(SolX.m_CO2[1,t] == SolX.r_in*SolX.m_H2[1,t])
+
+    SolX.c53_j = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_j.add(SolX.m_Ri[1,t] == SolX.m_H2[1,t] + SolX.m_CO2[1,t])
+
+    SolX.c53_dk = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_dk.add(SolX.s_raw[1,t] <= SolX.S_raw_max)
+
+    #------------------------------------------------Storage level Constraints------------------------------------------------
+
+    # Define raw storage level as function of in- and out-flow
+    SolX.c53_lx = pe.ConstraintList()
+    for t in SolX.T:
+        if t >= 2:
+            SolX.c53_lx.add(SolX.s_raw[1,t] == SolX.s_raw[1,t-1] + SolX.m_Ri[1,t] - SolX.m_Ro)
+
+    # Define 50% raw storage level prior to first simulation hour and at last simulation hour
+    SolX.c53_m = pe.ConstraintList()
+    SolX.c53_m.add(SolX.s_raw[1,1] == 0.5*SolX.S_raw_max + SolX.m_Ri[1,1] - SolX.m_Ro)
+    SolX.c53_m.add(0.5*SolX.S_raw_max == SolX.s_raw[1,T])
+
+    # Define max storage level of pure methanol
+    SolX.c53_n = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_n.add(SolX.s_Pu[1,t] <= SolX.S_Pu_max)
+
+    # Storage level of pure methanol at time 1 equals the inflow in time 1 (empty tank prior to simulation)
+    SolX.c53_o = Constraint(expr=SolX.s_Pu[1,1] == SolX.m_Pu)
+
+    # Define raw storage level as function of in- and out-flow
+    SolX.c53_p = pe.ConstraintList()
+    for t in SolX.T:
+        if t >= 2:
+            SolX.c53_p.add(SolX.s_Pu[1,t] == SolX.s_Pu[1,t-1] + SolX.m_Pu - SolX.m_demand[t])
+    
+
+    SolX.c53_qrsx = pe.ConstraintList()
+    for t in SolX.T:
+        if t >= 2:
+            SolX.c53_qrsx.add(-SolX.ramp_pem * SolX.P_pem_cap <= SolX.p_pem[1,t] - SolX.p_pem[1,t-1])
+            SolX.c53_qrsx.add(SolX.p_pem[1,t] - SolX.p_pem[1,t-1] <= SolX.ramp_pem * SolX.P_pem_cap)
+
+    SolX.c53_uv = pe.ConstraintList()
+    M_FCR = max(c_FCR.values()) # make sure that the correct series is applied (FCR / FCRs ?)
+    M_aFRR_up = max(c_aFRR_up.values()) 
+    M_aFRR_down = max(c_aFRR_down.values())
+    M_mFRR_up = max(c_mFRR.values())
+    for t in SolX.T:
+        SolX.c53_uv.add(SolX.c_FCR[t] - SolX.β_FCR[t] <= M_FCR*SolX.δ_FCR[t])
+        SolX.c53_uv.add(SolX.c_aFRR_up[t] - SolX.β_aFRR_up[t] <= M_aFRR_up*SolX.δ_aFRR_up[t])
+        SolX.c53_uv.add(SolX.c_aFRR_down[t] - SolX.β_aFRR_down[t] <= M_aFRR_down*SolX.δ_aFRR_down[t])
+        SolX.c53_uv.add(SolX.c_mFRR_up[t] - SolX.β_mFRR_up[t] <= M_mFRR_up*SolX.δ_mFRR_up[t])
+        SolX.c53_uv.add(SolX.β_FCR[t] - SolX.c_FCR[t] <= M_FCR * (1 - SolX.δ_FCR[t]))
+        SolX.c53_uv.add(SolX.β_aFRR_up[t] - SolX.c_aFRR_up[t] <= M_aFRR_up * (1 - SolX.δ_aFRR_up[t]))
+        SolX.c53_uv.add(SolX.β_aFRR_down[t] - SolX.c_aFRR_down[t] <= M_aFRR_down * (1 - SolX.δ_aFRR_down[t]))
+        SolX.c53_uv.add(SolX.β_mFRR_up[t] - SolX.c_mFRR_up[t] <= M_mFRR_up * (1 - SolX.δ_mFRR_up[t]))
+
+    SolX.c53_xx = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_xx.add(SolX.r_FCR[1,t] == SolX.b_FCR[t] * SolX.δ_FCR[t])
+        SolX.c53_xx.add(SolX.r_aFRR_up[1,t] == SolX.b_aFRR_up[t] * SolX.δ_aFRR_up[t])
+        SolX.c53_xx.add(SolX.r_aFRR_down[1,t] == SolX.b_aFRR_down[t] * SolX.δ_aFRR_down[t])
+        SolX.c53_xx.add(SolX.r_mFRR_up[1,t] == SolX.b_mFRR_up[t] * SolX.δ_mFRR_up[t])
+
+
+    # grid constraints taking reserves into account
+    SolX.c53_aaaa = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_aaaa.add(SolX.P_grid_cap + (SolX.p_import[1,t]-SolX.p_export[1,t])  >= SolX.r_FCR[1,t] + SolX.r_aFRR_up[1,t] + SolX.r_mFRR_up[1,t])
+
+    SolX.c53_ab = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_ab.add(SolX.P_grid_cap - (SolX.p_import[1,t]-SolX.p_export[1,t])  >= SolX.r_FCR[1,t] + SolX.r_aFRR_down[1,t])
+
+    SolX.c53_ac = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_ac.add(SolX.P_pem_cap - SolX.p_pem[1,t]  >= SolX.r_FCR[1,t] + SolX.r_aFRR_down[1,t])
+
+    SolX.c53_ad = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.c53_ad.add(SolX.p_pem[1,t] - SolX.P_pem_min >= SolX.r_FCR[1,t] + SolX.r_aFRR_up[1,t] + SolX.r_mFRR_up[1,t])
+
+    SolX.CalcvOpex = pe.ConstraintList()
+    for t in SolX.T:
+        SolX.CalcvOpex.add(SolX.vOPEX[t] == -(SolX.c_FCR[t]*SolX.r_FCR[1,t] + SolX.c_aFRR_up[t]*SolX.r_aFRR_up[1,t] + SolX.c_aFRR_down[t]*SolX.r_aFRR_down[1,t] + SolX.c_mFRR_up[t]*SolX.r_mFRR_up[1,t]) +(SolX.c_DA[t]+SolX.CT)*SolX.p_import[1,t] - (SolX.c_DA[t]-SolX.PT)*SolX.p_export[1,t])
+
+    ###############SOLVE THE MODEL########################
+
+
+    Xinstance = SolX.create_instance()
+    Xresults = solver.solve(Xinstance)
+    print(Xresults)
 
 
 #---------------------------------- apply V3 scenario based solution to "real" data --------------------------
-instance.bx_FCR[1].value
-instance.p_pem[1,1].value
+#instance.bx_FCR[1].value
+#instance.p_pem[1,1].value
 
 
-list_bx_FCR = [instance.bx_FCR[i].value for i in range(1,T+1)]
+#list_bx_FCR = [instance.bx_FCR[i].value for i in range(1,T+1)]
 
-bx_FCR = dict(zip(np.arange(1,len(list_bx_FCR)+1),list_bx_FCR));
+#bx_FCR = dict(zip(np.arange(1,len(list_bx_FCR)+1),list_bx_FCR));
 
 
 
 #Converting Pyomo results to list
-list_b_FCR = [instance.b_FCR[i].value for i in range(1,T+1)]
-list_β_FCR = [instance.β_FCR[i].value for i in range(1,T+1)]
-list_b_mFRRup = [instance.b_mFRR_up[i].value for i in range(1,T+1)]
-list_β_mFRRup = [instance.β_mFRR_up[i].value for i in range(1,T+1)]
-list_β_aFRRup = [instance.β_aFRR_up[i].value for i in range(1,T+1)]
-list_b_aFRRup = [instance.b_aFRR_up[i].value for i in range(1,T+1)]
-list_b_aFRRdown = [instance.b_aFRR_down[i].value for i in range(1,T+1)]
-list_β_aFRRdown = [instance.β_aFRR_down[i].value for i in range(1,T+1)]
+#list_b_FCR = [instance.b_FCR[i].value for i in range(1,T+1)]
+#list_β_FCR = [instance.β_FCR[i].value for i in range(1,T+1)]
+#list_b_mFRRup = [instance.b_mFRR_up[i].value for i in range(1,T+1)]
+#list_β_mFRRup = [instance.β_mFRR_up[i].value for i in range(1,T+1)]
+#list_β_aFRRup = [instance.β_aFRR_up[i].value for i in range(1,T+1)]
+#list_b_aFRRup = [instance.b_aFRR_up[i].value for i in range(1,T+1)]
+#list_b_aFRRdown = [instance.b_aFRR_down[i].value for i in range(1,T+1)]
+#list_β_aFRRdown = [instance.β_aFRR_down[i].value for i in range(1,T+1)]
 
 # preparing the bid results as model parameters for second-stage optimization
-b_FCR = dict(zip(np.arange(1,len(list_b_FCR)+1),list_b_FCR));
-β_FCR = dict(zip(np.arange(1,len(list_β_FCR)+1),list_β_FCR));
-b_aFRR_up = dict(zip(np.arange(1,len(list_b_aFRR_up)+1),list_b_aFRR_up));
-β_aFRR_up = dict(zip(np.arange(1,len(list_β_aFRR_up)+1),list_β_aFRR_up));
-b_aFRR_down = dict(zip(np.arange(1,len(list_b_aFRR_down)+1),list_b_aFRR_down));
-β_aFRR_down = dict(zip(np.arange(1,len(list_β_aFRR_down)+1),list_β_aFRR_down));
-b_mFRR_up = dict(zip(np.arange(1,len(list_b_mFRR_up)+1),list_b_mFRR_up));
-β_mFRR_up = dict(zip(np.arange(1,len(list_β_mFRR_up)+1),list_β_mFRR_up));
+#b_FCR = dict(zip(np.arange(1,len(list_b_FCR)+1),list_b_FCR));
+#β_FCR = dict(zip(np.arange(1,len(list_β_FCR)+1),list_β_FCR));
+#b_aFRR_up = dict(zip(np.arange(1,len(list_b_aFRR_up)+1),list_b_aFRR_up));
+#β_aFRR_up = dict(zip(np.arange(1,len(list_β_aFRR_up)+1),list_β_aFRR_up));
+#b_aFRR_down = dict(zip(np.arange(1,len(list_b_aFRR_down)+1),list_b_aFRR_down));
+#β_aFRR_down = dict(zip(np.arange(1,len(list_β_aFRR_down)+1),list_β_aFRR_down));
+#b_mFRR_up = dict(zip(np.arange(1,len(list_b_mFRR_up)+1),list_b_mFRR_up));
+#β_mFRR_up = dict(zip(np.arange(1,len(list_β_mFRR_up)+1),list_β_mFRR_up));
 
 
 
@@ -747,42 +749,3 @@ b_mFRR_up = dict(zip(np.arange(1,len(list_b_mFRR_up)+1),list_b_mFRR_up));
 
 
 
-
-
-df_results = pd.DataFrame({#Col name : Value(list)
-
-                          }, index=DateRange,
-                          )
-
-df_Sol = pd.DataFrame({#Col name : Value(list)
-                          'P_PEM' : P_PEM,
-                          'P_import' : P_import,
-                          'P_export' : P_export,
-                          'P_grid' : P_grid,
-                          'z_grid' : z_grid,
-                          'P_PV' : P_PV,
-                          'b_FCR': list(b_FCR.values()),
-                          'beta_FCR': list(β_FCR.values()),
-                          'r_FCR' : r_FCR,
-                          'c_FCR' : list(c_FCR.values()),
-                          'b_mFRR_up': list(b_mFRR_up.values()),
-                          'beta_mFRR_up': list(β_mFRR_up.values()),
-                          'r_mFRR_up': r_mFRR_up,
-                          'c_mFRR_up' : list(c_mFRR_up.values()),
-                          'b_aFRR_up': list(b_aFRR_up.values()),
-                          'beta_aFRR_up': list(β_aFRR_up.values()),
-                          'r_aFRR_up': r_aFRR_up,
-                          'c_aFRR_up' : list(c_aFRR_up.values()),
-                          'b_aFRR_down': list(b_aFRR_down.values()),
-                          'beta_aFRR_down': list(β_aFRR_down.values()),
-                          'r_aFRR_down': r_aFRR_down,
-                          'c_aFRRdown' : list(c_aFRR_down.values()),
-                          'Raw Storage' : s_raw,
-                          'Pure Storage' : s_pu,
-                          'm_Raw_In' : m_ri,
-                          'DA_clearing' : list(DA.values()),
-                          'vOPEX' : vOPEX
-                          }, index=DateRange,
-                          )
-
-# %%
