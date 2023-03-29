@@ -429,3 +429,90 @@ def write_1d_to_2d(d1):
     for t in range(1,len(d1)+1):
         d2[(1,t)] = d1[t]
     return d2
+
+
+
+#Export to Excel 
+def WriteToExcel(version,df_results_values,Start_date,End_date): 
+    print(df_results_values)
+    DateRange = pd.date_range(start=Start_date, end=End_date, freq='H')
+    # Convert date range to a list of strings
+    date_strings = [d.strftime('%Y-%m-%d %H:%M:%S') for d in DateRange]
+    #Creating dataframe
+    columns = ['P_PEM', 'P_import', 'P_export', 'P_grid', 'z_grid', 'P_PV',
+           'b_FCR', 'beta_FCR', 'r_FCR', 'c_FCR', 'b_mFRR_up', 'beta_mFRR_up',
+           'r_mFRR_up', 'c_mFRR_up', 'b_aFRR_up', 'beta_aFRR_up', 'r_aFRR_up',
+           'c_aFRR_up', 'b_aFRR_down', 'beta_aFRR_down', 'r_aFRR_down',
+           'c_aFRRdown', 'Raw Storage', 'Pure Storage', 'CO2', 'm_Raw_In',
+           'DA_clearing', 'vOPEX']
+    
+    Results = pd.DataFrame(columns=columns, index=date_strings)
+
+
+    if version == 1: 
+        #Define which variables should be printed
+        Results['P_PEM'] = df_results_values['P_PEM'].tolist()
+        Results['P_import'] = df_results_values['P_import'].tolist()
+        Results['P_export'] = df_results_values['P_export'].tolist()
+        Results['P_grid'] = df_results_values['P_grid'].tolist()
+        Results['z_grid'] = df_results_values['z_grid'].tolist()
+        Results['P_PV'] = df_results_values['P_PV'].tolist()
+        Results['s_raw'] = df_results_values['s_raw'].tolist()
+        Results['s_pu'] = df_results_values['s_pu'].tolist()
+        Results['m_CO2'] = df_results_values['m_CO2'].tolist()
+        Results['m_ri'] = df_results_values['m_ri'].tolist()
+        Results['DA'] = df_results_values['DA'].tolist()
+        Results['vOPEX'] = df_results_values['vOPEX'].tolist()
+        
+    if version == 2: 
+        #Define which variables should be printed
+        print('MONS')
+        Results['P_PEM'] = df_results_values['P_PEM'].tolist()
+        Results['P_import'] = df_results_values['P_import'].tolist()
+        Results['P_export'] = df_results_values['P_export'].tolist()
+        Results['P_grid'] = df_results_values['P_grid'].tolist()
+        Results['z_grid'] = df_results_values['z_grid'].tolist()
+        Results['P_PV'] = df_results_values['P_PV'].tolist()
+        Results['s_raw'] = df_results_values['s_raw'].tolist()
+        Results['s_pu'] = df_results_values['s_pu'].tolist()
+        Results['m_CO2'] = df_results_values['m_CO2'].tolist()
+        Results['m_ri'] = df_results_values['m_ri'].tolist()
+        Results['DA'] = df_results_values['DA'].tolist()
+        Results['vOPEX'] = df_results_values['vOPEX'].tolist()
+
+    if version == 3: 
+        #Define which variables should be printed
+        Results = pd.DataFrame({#Col name : Value(list)
+                                'P_PEM' : df_results_values['P_PEM'],
+                                'P_import' : df_results_values['P_import'],
+                                'P_export' : df_results_values['P_export'],
+                                'P_grid' : df_results_values['P_grid'],
+                                'z_grid' : df_results_values['z_grid'],
+                                'P_PV' : df_results_values['P_PV'],
+                                'b_FCR': nan_list,
+                                'beta_FCR': nan_list,
+                                'r_FCR' : nan_list,
+                                'c_FCR' : nan_list,
+                                'b_mFRR_up': nan_list,
+                                'beta_mFRR_up': nan_list,
+                                'r_mFRR_up': nan_list,
+                                'c_mFRR_up' : nan_list,
+                                'b_aFRR_up': nan_list,
+                                'beta_aFRR_up': nan_list,
+                                'r_aFRR_up': nan_list,
+                                'c_aFRR_up' : nan_list,
+                                'b_aFRR_down': nan_list,
+                                'beta_aFRR_down': nan_list,
+                                'r_aFRR_down': nan_list,
+                                'c_aFRRdown' : nan_list,
+                                'Raw Storage' : df_results_values['s_raw'],
+                                'Pure Storage' : df_results_values['s_pu'],
+                                'm_Raw_In' : df_results_values['m_ri'],
+                                'DA_clearing' : df_results_values['DA'],
+                                'vOPEX' : df_results_values['vOPEX']},
+                                    index=DateRange,)
+    
+    Results.to_excel("Version_"+str(version)+ "_" + Start_date[:10]+"_"+End_date[:10]+ ".xlsx")
+    return Results
+
+    
