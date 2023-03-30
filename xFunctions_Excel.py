@@ -138,8 +138,8 @@ def import_mFRR(file_name, Start_date, End_date, Start_date_scen, End_date_scen)
 
 
 # Function designed for importing and converting hourly time series csv file (delimiter-flexible))
-def import_generic(file_name, price_column,time_column, Start_date, End_date, format):
-    file_to_open = Path("Data/") / file_name
+def import_generic(file_name,data_folder, price_column,time_column, Start_date, End_date, format):
+    file_to_open = data_folder + "/" + file_name
     if '.csv' in file_name:
         df_raw = pd.read_csv(file_to_open,sep=get_delimiter(file_to_open),decimal = ',',low_memory=False)
         df_raw[price_column] = df_raw[price_column].astype(float)
@@ -433,7 +433,7 @@ def write_1d_to_2d(d1):
 
 
 #Export to Excel 
-def WriteToExcel(version,df_results_values,Start_date,End_date): 
+def WriteToExcel(version,df_results_values,Start_date,End_date,result_folder): 
     
     DateRange = pd.date_range(start=Start_date, end=End_date, freq='H')
     # Convert date range to a list of strings
@@ -511,7 +511,7 @@ def WriteToExcel(version,df_results_values,Start_date,End_date):
         Results['DA clearing'] = df_results_values['DA'].tolist()
         Results['vOPEX'] = df_results_values['vOPEX'].tolist()
     
-    Results.to_excel("Version_"+str(version)+ "_" + Start_date[:10]+"_"+End_date[:10]+ ".xlsx")
+    Results.to_excel(result_folder  + "/" +  "Version_"+str(version)+ "_" + Start_date[:10]+"_"+End_date[:10]+ ".xlsx")
     
     
     return Results

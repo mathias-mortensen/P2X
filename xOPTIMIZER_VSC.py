@@ -5,11 +5,8 @@ from pyomo.core import *
 import pandas as pd
 import numpy as np
 import time
-import sys
-import os 
-
 #---------------------------------------------------------------------------
-from xFunctions_Excel import *  # Contains all custom functions created for the model
+from xFunctions import *  # Contains all custom functions created for the model
 #from xFunctions import first_stage_to_dict
 def first_stage_to_dict(T,var_name):
     list_x = [var_name[i].value for i in range(1,T+1)]
@@ -19,20 +16,15 @@ def first_stage_to_dict(T,var_name):
 #Initializing timer 
 start_time = time.time()
 
-excel_path = sys.argv[1]
-parent_folder = os.path.dirname(excel_path)
-data_folder = parent_folder + "/Data"
-result_folder = parent_folder + "/Results files"
-
 
 #---------------------------- Input Data (from master excel file) -------------------------------------
 print('Reading input data \n')
-df_run = pd.read_excel(excel_path,'Run')   #When using cmd 
-df_param = pd.read_excel(excel_path,'parameter settings')  #When using cmd 
-df_pw = pd.read_excel(excel_path,'Efficiency breakpoints')  #When using cmd 
+df_run = pd.read_excel('Opt_X.xlsx','Run')
+df_param = pd.read_excel('Opt_X.xlsx','parameter settings')
+df_pw = pd.read_excel('Opt_X.xlsx','Efficiency breakpoints')
+
 # Assigning model input values to variables
 version = assign_var(df_run,'model_version')
-
 Start_date = assign_var(df_run,'Start_date_sim') 
 End_date = assign_var(df_run,'End_date_sim')
 Demand_pattern = assign_var(df_run,'Demand_pattern')
@@ -40,7 +32,7 @@ Start_date_scen = assign_var(df_run,'Start_date_scen')
 End_date_scen = assign_var(df_run,'End_date_scen')
 sEfficiency = assign_var(df_run,'sEfficiency')
 n_samples = int(assign_var(df_run,'n_samples'))
-blocksize = int(assign_var(df_run,'blocksize'))
+blocksize = int(assign_var(df_run,'block size'))
 PV_Cluster = assign_var(df_run,'PV_Cluster')
 n_clusters_PV = int(assign_var(df_run,'n_clusters_PV'))
 blocksize_PV = int(assign_var(df_run,'blocksize_PV'))
@@ -53,15 +45,15 @@ hourly_demand = assign_var(df_param,'k_d')
 file_PV = assign_var(df_run,'Solar irradiance')
 power_column_PV = assign_var(df_run,'PV power column')
 time_column_PV = assign_var(df_run,'PV time column')
-P_PV_max = import_generic(file_PV,data_folder,power_column_PV, time_column_PV, Start_date, End_date,'dict')
+P_PV_max = import_generic(file_PV,power_column_PV, time_column_PV, Start_date, End_date,'dict')
 
 # importing day ahead prices as well as the applicaple time range detemrined by the date settings
 # TIMERANGE MAY NOT BE NEEDED, 'DA' is obsolete, use c_DA
-DA,TimeRange = import_DA(data_folder + "/" +'Elspotprices_RAW.csv',Start_date, End_date, Start_date_scen, End_date_scen)
+DA,TimeRange = import_DA('Elspotprices_RAW.csv',Start_date, End_date, Start_date_scen, End_date_scen)
 file_DA = assign_var(df_run, 'Day-ahead file name')
 price_column_DA = assign_var(df_run,'DA price column')
 time_column_DA = assign_var(df_run,'DA time column')
-c_DA = import_generic(file_DA,data_folder,price_column_DA, time_column_DA, Start_date, End_date,'dict')
+c_DA = import_generic(file_DA,price_column_DA, time_column_DA, Start_date, End_date,'dict')
 
 #Generating demand profile
 Demand = demand_assignment(Demand_pattern,TimeRange,hourly_demand)
@@ -70,32 +62,31 @@ Demand = demand_assignment(Demand_pattern,TimeRange,hourly_demand)
 file_FCR = assign_var(df_run,'FCR price file name')
 price_column_FCR = assign_var(df_run,'FCR price column')
 time_column_FCR = assign_var(df_run,'FCR time column')
-c_FCR = import_generic(file_FCR,data_folder,price_column_FCR, time_column_FCR, Start_date, End_date,'dict')
+c_FCR = import_generic(file_FCR,price_column_FCR, time_column_FCR, Start_date, End_date,'dict')
 # importing mFRR data
-c_mFRR = import_mFRR(data_folder + "/" +"MfrrReservesDK1.csv", Start_date, End_date, Start_date_scen, End_date_scen)
+c_mFRR = import_mFRR("MfrrReservesDK1.csv", Start_date, End_date, Start_date_scen, End_date_scen)
 file_mFRR = assign_var(df_run,'mFRR price file name')
 price_column_mFRR = assign_var(df_run,'mFRR price column')
 time_column_mFRR = assign_var(df_run,'mFRR time column')
-c_mFRR = import_generic(file_mFRR,data_folder,price_column_mFRR, time_column_mFRR, Start_date, End_date,'dict')
+c_mFRR = import_generic(file_mFRR,price_column_mFRR, time_column_mFRR, Start_date, End_date,'dict')
 # importing aFRR data using the generic function
 file_aFRR_up = assign_var(df_run,'aFRR_up price file name')
 price_column_aFRR_up = assign_var(df_run,'aFRR_up price column')
 time_column_aFRR_up = assign_var(df_run,'aFRR_up time column')
-c_aFRR_up = import_generic(file_aFRR_up,data_folder,price_column_aFRR_up, time_column_aFRR_up, Start_date, End_date,'dict')
+c_aFRR_up = import_generic(file_aFRR_up,price_column_aFRR_up, time_column_aFRR_up, Start_date, End_date,'dict')
 file_aFRR_down = assign_var(df_run,'aFRR_down price file name')
 price_column_aFRR_down = assign_var(df_run,'aFRR_down price column')
 time_column_aFRR_down = assign_var(df_run,'aFRR_down time column')
-c_aFRR_down = import_generic(file_aFRR_down,data_folder,price_column_aFRR_down, time_column_aFRR_down, Start_date, End_date,'dict')
-
+c_aFRR_down = import_generic(file_aFRR_down,price_column_aFRR_down, time_column_aFRR_down, Start_date, End_date,'dict')
 
 #------------------------------------- generating scenarios for the stochastic model -----------------------------------------
 if version == 3:
     print('Generating scenarios \n')
-    c_DA_scen = import_generic(file_DA,data_folder,price_column_DA, time_column_DA, Start_date_scen, End_date_scen,'list')
-    c_FCR_scen = import_generic(file_FCR,data_folder,price_column_FCR, time_column_FCR, Start_date_scen, End_date_scen,'list')
-    c_aFRR_up_scen = import_generic(file_aFRR_up,data_folder,price_column_aFRR_up, time_column_aFRR_up, Start_date_scen, End_date_scen,'list')
-    c_aFRR_down_scen = import_generic(file_aFRR_down,data_folder,price_column_aFRR_down, time_column_aFRR_down, Start_date_scen, End_date_scen,'list')
-    c_mFRR_scen = import_generic(file_mFRR,data_folder,price_column_mFRR, time_column_mFRR, Start_date_scen, End_date_scen,'list')
+    c_DA_scen = import_generic(file_DA,price_column_DA, time_column_DA, Start_date_scen, End_date_scen,'list')
+    c_FCR_scen = import_generic(file_FCR,price_column_FCR, time_column_FCR, Start_date_scen, End_date_scen,'list')
+    c_aFRR_up_scen = import_generic(file_aFRR_up,price_column_aFRR_up, time_column_aFRR_up, Start_date_scen, End_date_scen,'list')
+    c_aFRR_down_scen = import_generic(file_aFRR_down,price_column_aFRR_down, time_column_aFRR_down, Start_date_scen, End_date_scen,'list')
+    c_mFRR_scen = import_generic(file_mFRR,price_column_mFRR, time_column_mFRR, Start_date_scen, End_date_scen,'list')
 
     Data = [c_DA_scen, c_FCR_scen, c_aFRR_up_scen, c_aFRR_down_scen, c_mFRR_scen]
     Data_names = ['DA','FCR','aFRR Up','aFRR Down','mFRR']
@@ -104,7 +95,7 @@ if version == 3:
     Data_comb_names = ['DA','aFRR Up','aFRR Down','mFRR']
 
     sampling_method = assign_var(df_run,'scenario sampling method')
-    blocksize = assign_var(df_run,'block_size') #number of hours for each 
+    blocksize = assign_var(df_run,'block size') #number of hours for each 
     sample_length = assign_var(df_run,'sample length') #number of hours for each scenario - should depend on time period ?
     n_clusters = int(assign_var(df_run,'number of clusters'))
 
@@ -522,7 +513,7 @@ if version == 3:
 
 instance = model.create_instance()
 results = solver.solve(instance)
-
+print(results)
 
 #------------------------------------ Create model 'SolX' for second stage optimization of model V3 ------------------------------
 if version == 3:
@@ -622,7 +613,7 @@ if version == 3:
     
     #Objective---------------------------------------------------
     print('Defining second stage objective and constraints \n')
-
+    
     expr = sum((-(SolX.c_FCR[t]*SolX.r_FCR[1,t] + SolX.c_aFRR_up[t]*SolX.r_aFRR_up[1,t] + SolX.c_aFRR_down[t]*SolX.r_aFRR_down[1,t] + SolX.c_mFRR_up[t]*SolX.r_mFRR_up[1,t]) + sum(π_DA[φ]*((SolX.c_DAs[φ,t]+SolX.CT)*SolX.p_import[1,t] - (SolX.c_DAs[φ,t]-SolX.PT)*SolX.p_export[1,t]) for φ in SolX.Φ)) for t in SolX.T)
     SolX.objective = pe.Objective(sense = pe.minimize, expr=expr)
     #CONSTRAINTS---------------------------------------------------
@@ -757,7 +748,7 @@ if version == 3:
 
     Xinstance = SolX.create_instance()
     Xresults = solver.solve(Xinstance)
-    
+    print(Xresults)
 
 
 
@@ -807,7 +798,7 @@ if version == 2:
     m_H2 = [instance.m_H2[1,i].value for i in range(1,T+1)]
     m_CO2 = [instance.m_CO2[1,i].value for i in range(1,T+1)]
     m_ri = [instance.m_Ri[1,i].value for i in range(1,T+1)]
-    vOPEX = [instance.c_obj[i].value for i in range(1,T+1)]
+    vOPEX = [instance.vOPEX[i].value for i in range(1,T+1)]
 
     #Converting to dataframe
     df_results = pd.DataFrame({#Col name : Value(list)
@@ -876,7 +867,7 @@ if version == 3:
 
 #---------------------------------- Write to Excel --------------------------
 print('Creating output file \n')
-WriteToExcel(version, df_results, Start_date, End_date,result_folder)
+WriteToExcel(version, df_results, Start_date, End_date)
 
 end_time = time.time()
 print('Run time:', (end_time-start_time), 'sec')
