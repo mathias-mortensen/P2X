@@ -881,7 +881,7 @@ WriteToExcel(version, df_results, Start_date, End_date,result_folder)
 end_time = time.time()
 print('Run time:', (end_time-start_time), 'sec')
 
-time.sleep(2)
+time.sleep(8)
 
 #---------------------------------- apply V3 scenario based solution to "real" data --------------------------
 #instance.bx_FCR[1].value

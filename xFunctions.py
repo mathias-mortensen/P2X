@@ -440,11 +440,8 @@ def WriteToExcel(version,df_results_values,Start_date,End_date):
     date_strings = [d.strftime('%Y-%m-%d %H:%M:%S') for d in DateRange]
     #Creating dataframe
     columns = ['P_PEM', 'P_import', 'P_export', 'P_grid', 'z_grid', 'P_PV',
-           'b_FCR', 'beta_FCR', 'r_FCR', 'c_FCR', 'b_mFRR_up', 'beta_mFRR_up',
-           'r_mFRR_up', 'c_mFRR_up', 'b_aFRR_up', 'beta_aFRR_up', 'r_aFRR_up',
-           'c_aFRR_up', 'b_aFRR_down', 'beta_aFRR_down', 'r_aFRR_down',
-           'c_aFRR_down', 'Raw Storage', 'Pure Storage', 'CO2 flow', 'Raw inflow',
-           'DA clearing', 'vOPEX']
+           'r_FCR', 'c_FCR','r_mFRR_up', 'c_mFRR_up', 'r_aFRR_up',
+           'c_aFRR_up','r_aFRR_down','c_aFRR_down', 'Raw Storage', 'Pure Storage', 'CO2 flow', 'Raw inflow','DA clearing', 'vOPEX']
     
     Results = pd.DataFrame(columns=columns, index=date_strings)
 
