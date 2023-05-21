@@ -22,7 +22,7 @@ Simulation period:
 Should be full weeks i.e. 7,14,21... full days 
 
 Note: 
-Rember to save the Excel file before model run 
+Rember to save the Excel file before model run when changing parameters 
 
 
 
