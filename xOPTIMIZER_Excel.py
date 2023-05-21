@@ -22,7 +22,7 @@ start_time = time.time()
 excel_path = sys.argv[1]
 parent_folder = os.path.dirname(excel_path)
 data_folder = parent_folder + "/Data"
-result_folder = parent_folder + "/Results files"
+result_folder = parent_folder + "/Result files"
 
 
 #---------------------------- Input Data (from master excel file) -------------------------------------
@@ -40,11 +40,11 @@ Start_date_scen = assign_var(df_run,'Start_date_scen')
 End_date_scen = assign_var(df_run,'End_date_scen')
 sEfficiency = assign_var(df_run,'sEfficiency')
 n_samples = int(assign_var(df_run,'n_samples'))
-blocksize = int(assign_var(df_run,'blocksize'))
-PV_Cluster = assign_var(df_run,'PV_Cluster')
-n_clusters_PV = int(assign_var(df_run,'n_clusters_PV'))
-blocksize_PV = int(assign_var(df_run,'blocksize_PV'))
-weeks = int(assign_var(df_run,'weeks'))
+blocksize = int(assign_var(df_run,'block_size'))
+#PV_Cluster = assign_var(df_run,'PV_Cluster')
+#n_clusters_PV = int(assign_var(df_run,'n_clusters_PV'))
+#blocksize_PV = int(assign_var(df_run,'blocksize_PV'))
+#weeks = int(assign_var(df_run,'weeks'))
 
 # constants assignment from 'Parameter settings'
 hourly_demand = assign_var(df_param,'k_d')
