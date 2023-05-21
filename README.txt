@@ -10,7 +10,7 @@ To run model:
 	The terminal/cmd should open and start downloading and installing the necessary packages to run the model.  
 3) Set parameters and choose model version.
 4) Press the "Run Model" botton.
-	The terminal/cmd should open and each operation is shown. When the model run is completed an Excel fil is created in the /Results_file folder         
+	The terminal/cmd should open and each operation is shown. When the model run is completed an Excel fil is created in the /Result files folder         
 
 Model version options:
 Model version = 1 for deterministic model and no reserve market included 
