@@ -1,5 +1,6 @@
 Requirements to run the model: 
 Install Python using Anaconda
+Install Gurobi solver
 Download the folder to a local path
 Make sure to enable all VBA macro settings in Excel
  
